@@ -46,7 +46,7 @@ ROSPublisher::ROSPublisher()
     stdNavSatFixPublisher = nh.advertise<sensor_msgs::NavSatFix>("standard/navsatfix", 1);
     stdTimeReferencePublisher =
         nh.advertise<sensor_msgs::TimeReference>("standard/timereference", 1);
-    stdInsPublisher = nh.advertise<ixblue_ins_msgs::ins>("iX/ins", 1);
+    stdInsPublisher = nh.advertise<ixblue_ins_msgs::Ins>("ix/ins", 1);
 }
 
 void ROSPublisher::onNewStdBinData(const ixblue_stdbin_decoder::Data::BinaryNav& navData,
@@ -298,7 +298,10 @@ ROSPublisher::toTimeReference(const ixblue_stdbin_decoder::Data::NavHeader& head
     // --- Initialisation
     sensor_msgs::TimeReferencePtr res = boost::make_shared<sensor_msgs::TimeReference>();
 
-    // --- Timestamp
+    // --- System time
+    res->header.stamp = ros::Time::now();
+
+    // --- INS Timestamp
     uint32_t sec = (uint32_t)((headerData.navigationDataValidityTime_100us) / 10000);
     uint32_t nsec =
         (uint32_t)(((headerData.navigationDataValidityTime_100us) % 10000) * 100000);
@@ -311,7 +314,7 @@ ROSPublisher::toTimeReference(const ixblue_stdbin_decoder::Data::NavHeader& head
     return res;
 }
 
-ixblue_ins_msgs::insPtr
+ixblue_ins_msgs::InsPtr
 ROSPublisher::toiXInsMsg(const ixblue_stdbin_decoder::Data::BinaryNav& navData)
 {
 
@@ -325,7 +328,7 @@ ROSPublisher::toiXInsMsg(const ixblue_stdbin_decoder::Data::BinaryNav& navData)
     }
 
     // --- Initialisation
-    ixblue_ins_msgs::insPtr res = boost::make_shared<ixblue_ins_msgs::ins>();
+    ixblue_ins_msgs::InsPtr res = boost::make_shared<ixblue_ins_msgs::Ins>();
 
     // --- Position
     res->latitude = navData.position.get().latitude_deg;
