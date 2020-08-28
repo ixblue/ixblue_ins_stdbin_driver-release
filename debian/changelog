@@ -1,0 +1,20 @@
+ros-melodic-ixblue-ins-msgs (0.1.1-1bionic) bionic; urgency=high
+
+  * Breaking change: Rename ins.msg to Ins.msg and iX/ins topic to ix/ins topic to follow ROS coding style
+    - In ROS, message names are CamelCase
+    - Topics are in lower case
+  * Minor formating fixes in ins msg definition
+  * msgs: fix minor typo
+  * Contributors: BARRAL Adrien, G.A. vd. Hoorn, Romain Reignier
+
+ -- Adrien BARRAL <adrien.barral@ixblue.com>  Thu, 27 Aug 2020 22:00:00 -0000
+
+ros-melodic-ixblue-ins-msgs (0.1.0-1bionic) bionic; urgency=high
+
+  * Prepare ROS release
+  * Initial Commit.
+  * Contributors: Adrien BARRAL, Romain Reignier
+
+ -- Adrien BARRAL <adrien.barral@ixblue.com>  Wed, 26 Aug 2020 22:00:00 -0000
+
+
