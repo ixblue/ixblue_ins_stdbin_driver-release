@@ -1,16 +1,18 @@
-#include "ros_publisher.h"
+#include <bitset>
+#include <cmath>
+
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <cmath>
+
+#include "ros_publisher.h"
 #include <ros/node_handle.h>
 
-ROSPublisher::ROSPublisher()
+ROSPublisher::ROSPublisher() : nh("~"), diagPub(nh)
 {
-    ros::NodeHandle nh("~");
-
-    nh.param("frame_id", frame_id, std::string("ins"));
+    nh.param("frame_id", frame_id, std::string("imu_link_ned"));
     nh.param("time_source", time_source, std::string("ins"));
     nh.param("time_origin", time_origin, std::string("unix"));
+    nh.param("use_compensated_acceleration", use_compensated_acceleration, false);
 
     if(time_source == std::string("ros"))
     {
@@ -19,8 +21,7 @@ ROSPublisher::ROSPublisher()
     else if(time_source != std::string("ins"))
     {
         ROS_WARN("This timestamp source is not available. You can use ins or ros. By "
-                 "default we "
-                 "replace your value by ins.");
+                 "default we replace your value by ins.");
         time_source = std::string("ins");
     }
 
@@ -31,8 +32,7 @@ ROSPublisher::ROSPublisher()
     else if(time_origin != std::string("unix"))
     {
         ROS_WARN("This timestamp origin is not available. You can use unix or "
-                 "sensor_default. By default we "
-                 "replace your value by unix.");
+                 "sensor_default. By default we replace your value by unix.");
         time_origin = std::string("unix");
     }
 
@@ -41,7 +41,14 @@ ROSPublisher::ROSPublisher()
     ROS_INFO("Timestamp register in the header will come from : %s", time_source.c_str());
     ROS_INFO("Timestamp register in the header will be in the base time of : %s",
              time_origin.c_str());
+    ROS_INFO("Use compensated acceleration : %s",
+             use_compensated_acceleration ? "true" : "false");
 
+    // Diagnostics
+    const std::string hardwareName = std::string{"iXblue INS "} + frame_id;
+    diagPub.setHardwareID(hardwareName);
+
+    // Publishers
     stdImuPublisher = nh.advertise<sensor_msgs::Imu>("standard/imu", 1);
     stdNavSatFixPublisher = nh.advertise<sensor_msgs::NavSatFix>("standard/navsatfix", 1);
     stdTimeReferencePublisher =
@@ -49,12 +56,27 @@ ROSPublisher::ROSPublisher()
     stdInsPublisher = nh.advertise<ixblue_ins_msgs::Ins>("ix/ins", 1);
 }
 
-void ROSPublisher::onNewStdBinData(const ixblue_stdbin_decoder::Data::BinaryNav& navData,
-                                   const ixblue_stdbin_decoder::Data::NavHeader& headerData)
+void ROSPublisher::onNewStdBinData(
+    const ixblue_stdbin_decoder::Data::BinaryNav& navData,
+    const ixblue_stdbin_decoder::Data::NavHeader& headerData)
 {
+    // Update status for diagnostics
+    diagPub.updateStatus(navData.insSystemStatus, navData.insAlgorithmStatus);
+
     auto headerMsg = getHeader(headerData, navData);
 
-    auto imuMsg = toImuMsg(navData);
+    // If system is waiting for position, do not publish because data have no meaning
+    if(navData.insSystemStatus.is_initialized())
+    {
+        const std::bitset<32> systemStatus2{navData.insSystemStatus->status2};
+        if(systemStatus2.test(
+               ixblue_stdbin_decoder::Data::INSSystemStatus::Status2::WAIT_FOR_POSITION))
+        {
+            return;
+        }
+    }
+
+    auto imuMsg = toImuMsg(navData, use_compensated_acceleration);
     auto navsatfixMsg = toNavSatFixMsg(navData);
     auto iXinsMsg = toiXInsMsg(navData);
 
@@ -73,6 +95,7 @@ void ROSPublisher::onNewStdBinData(const ixblue_stdbin_decoder::Data::BinaryNav&
     {
         imuMsg->header = headerMsg;
         stdImuPublisher.publish(imuMsg);
+        diagPub.stdImuTick(imuMsg->header.stamp);
     }
     if(navsatfixMsg)
     {
@@ -86,8 +109,9 @@ void ROSPublisher::onNewStdBinData(const ixblue_stdbin_decoder::Data::BinaryNav&
     }
 }
 
-std_msgs::Header ROSPublisher::getHeader(const ixblue_stdbin_decoder::Data::NavHeader& headerData,
-                                         const ixblue_stdbin_decoder::Data::BinaryNav& navData)
+std_msgs::Header
+ROSPublisher::getHeader(const ixblue_stdbin_decoder::Data::NavHeader& headerData,
+                        const ixblue_stdbin_decoder::Data::BinaryNav& navData)
 {
     // --- Initialisation
     std_msgs::Header res;
@@ -135,13 +159,18 @@ std_msgs::Header ROSPublisher::getHeader(const ixblue_stdbin_decoder::Data::NavH
     return res;
 }
 
-sensor_msgs::ImuPtr ROSPublisher::toImuMsg(const ixblue_stdbin_decoder::Data::BinaryNav& navData)
+sensor_msgs::ImuPtr
+ROSPublisher::toImuMsg(const ixblue_stdbin_decoder::Data::BinaryNav& navData,
+                       bool use_compensated_acceleration)
 {
 
     // --- Check if there are enough data to send the message
-    if(navData.rotationRateVesselFrame.is_initialized() == false ||
-       navData.attitudeQuaternion.is_initialized() == false ||
-       navData.accelerationVesselFrame.is_initialized() == false)
+    if(!navData.rotationRateVesselFrame.is_initialized() ||
+       !navData.attitudeQuaternion.is_initialized() ||
+       (use_compensated_acceleration &&
+        !navData.accelerationVesselFrame.is_initialized()) ||
+       (!use_compensated_acceleration &&
+        !navData.rawAccelerationVesselFrame.is_initialized()))
     {
         return nullptr;
     }
@@ -150,10 +179,11 @@ sensor_msgs::ImuPtr ROSPublisher::toImuMsg(const ixblue_stdbin_decoder::Data::Bi
     sensor_msgs::ImuPtr res = boost::make_shared<sensor_msgs::Imu>();
 
     // --- Orientation
-    res->orientation.x = navData.attitudeQuaternion.get().q0;
-    res->orientation.y = navData.attitudeQuaternion.get().q1;
-    res->orientation.z = navData.attitudeQuaternion.get().q2;
-    res->orientation.w = navData.attitudeQuaternion.get().q3;
+    res->orientation.x = navData.attitudeQuaternion.get().q1;
+    res->orientation.y = navData.attitudeQuaternion.get().q2;
+    res->orientation.z = navData.attitudeQuaternion.get().q3;
+    // Must negate w to get a correct quaternion and match attitudeHeading output
+    res->orientation.w = -navData.attitudeQuaternion.get().q0;
 
     // --- Orientation SD
     if(navData.attitudeQuaternionDeviation.is_initialized() == false)
@@ -215,9 +245,18 @@ sensor_msgs::ImuPtr ROSPublisher::toImuMsg(const ixblue_stdbin_decoder::Data::Bi
     }
 
     // --- Linear Acceleration
-    res->linear_acceleration.x = navData.accelerationVesselFrame.get().xv1_msec2;
-    res->linear_acceleration.y = navData.accelerationVesselFrame.get().xv2_msec2;
-    res->linear_acceleration.z = navData.accelerationVesselFrame.get().xv3_msec2;
+    if(use_compensated_acceleration)
+    {
+        res->linear_acceleration.x = navData.accelerationVesselFrame.get().xv1_msec2;
+        res->linear_acceleration.y = navData.accelerationVesselFrame.get().xv2_msec2;
+        res->linear_acceleration.z = navData.accelerationVesselFrame.get().xv3_msec2;
+    }
+    else
+    {
+        res->linear_acceleration.x = navData.rawAccelerationVesselFrame.get().xv1_msec2;
+        res->linear_acceleration.y = navData.rawAccelerationVesselFrame.get().xv2_msec2;
+        res->linear_acceleration.z = navData.rawAccelerationVesselFrame.get().xv3_msec2;
+    }
 
     // --- Linear Acceleration SD
     if(navData.accelerationVesselFrameDeviation.is_initialized() == false)
