@@ -1,3 +1,29 @@
+## ixblue_ins_stdbin_driver (melodic) - 0.1.4-1
+
+The packages in the `ixblue_ins_stdbin_driver` repository were released into the `melodic` distro by running `/usr/bin/bloom-release ixblue_ins_stdbin_driver --rosdistro melodic` on `Tue, 27 Oct 2020 09:26:45 -0000`
+
+These packages were released:
+- `ixblue_ins`
+- `ixblue_ins_driver`
+- `ixblue_ins_msgs`
+
+Version of package(s) in repository `ixblue_ins_stdbin_driver`:
+
+- upstream repository: https://github.com/ixblue/ixblue_ins_stdbin_driver.git
+- release repository: https://github.com/ixblue/ixblue_ins_stdbin_driver-release.git
+- rosdistro version: `0.1.3-1`
+- old version: `0.1.3-1`
+- new version: `0.1.4-1`
+
+Versions of tools used:
+
+- bloom version: `0.10.0`
+- catkin_pkg version: `0.4.23`
+- rosdep version: `0.19.0`
+- rosdistro version: `0.8.3`
+- vcstools version: `0.1.42`
+
+
 ## ixblue_ins_stdbin_driver (noetic) - 0.1.3-1
 
 The packages in the `ixblue_ins_stdbin_driver` repository were released into the `noetic` distro by running `/usr/bin/bloom-release ixblue_ins_stdbin_driver --rosdistro noetic` on `Thu, 03 Sep 2020 12:48:59 -0000`
