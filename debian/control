@@ -1,0 +1,12 @@
+Source: ros-kinetic-ixblue-ins-driver
+Section: misc
+Priority: optional
+Maintainer: Laure LE BRETON <laure.le-breton@ixblue.com>
+Build-Depends: debhelper (>= 9.0.0), libboost-dev, libboost-program-options-dev, libboost-system-dev, libboost-thread-dev, libpcap0.8-dev, ros-kinetic-catkin, ros-kinetic-diagnostic-msgs, ros-kinetic-diagnostic-updater, ros-kinetic-ixblue-ins-msgs, ros-kinetic-ixblue-stdbin-decoder, ros-kinetic-nav-msgs, ros-kinetic-roscpp, ros-kinetic-sensor-msgs
+Homepage: http://wiki.ros.org/ixblue_ins_driver
+Standards-Version: 3.9.2
+
+Package: ros-kinetic-ixblue-ins-driver
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libboost-dev, libboost-system-dev, ros-kinetic-diagnostic-msgs, ros-kinetic-diagnostic-updater, ros-kinetic-ixblue-ins-msgs, ros-kinetic-ixblue-stdbin-decoder, ros-kinetic-nav-msgs, ros-kinetic-roscpp, ros-kinetic-sensor-msgs
+Description: The iXblue_ins_driver package
