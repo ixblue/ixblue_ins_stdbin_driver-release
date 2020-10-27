@@ -1,8 +1,7 @@
 # iXblue INS driver - Protocol iXblue stdbin
 
-![Kinetic](https://github.com/ixblue/ixblue_ins_stdbin_driver/workflows/Kinetic/badge.svg)
-![Melodic](https://github.com/ixblue/ixblue_ins_stdbin_driver/workflows/Melodic/badge.svg)
-![Noetic](https://github.com/ixblue/ixblue_ins_stdbin_driver/workflows/Noetic/badge.svg)
+![ROS CI Badge](https://github.com/ixblue/ixblue_ins_stdbin_driver/workflows/ROS%20CI/badge.svg)
+![CI Badge](https://github.com/ixblue/ixblue_ins_stdbin_driver/workflows/CI/badge.svg)
 
 iXblue is a global leader in the design and manufacturing of innovative
 solutions devoted to navigation, positioning and underwater imaging,
@@ -86,10 +85,15 @@ roslaunch ixblue_ins_driver ixblue_ins_driver.launch
 
 Depending on, your requirements and your configuration, you can also modify some arguments.
 
+* **frame_id** (*string*, default: `imu_link_ned`): frame of the sensor, used in the headers of the messages.
 * **udp_port** (*int*, default: `8200`): your system will receive the data from the INS by this port.
 * **ip** (*string*, default: `0.0.0.0`):  the address of the network interface to listen to
 * **time_source** (*string*, default: `ins`): determine the source of the timestamp data. "ins" for ins timestamp. "ros" for ROS timestamp.
 * **time_origin** (*string*, default: `unix`): determine the time origin of the timestamp. "sensor_default" for ins base time. "unix" for UNIX base time (since 1st of january 1970).
+* **expected_frequency** (*double*, default: `10.0`): expected INS output frequency in Hz, used for diagnostics. Must match the setting on the INS configuration webpage.
+* **max_latency** (*double*, default: `1.0`): maximum acceptable timestamp delay in seconds.
+* **connection_lost_timeout** (*double*, default: `10.0`): time without receiving data before switching to error diagnostic.
+* **use_compensated_acceleration** (*bool*, default: `false`): use acceleration compensated from gravity and Coriolis.
 
 **[Back to top](#table-of-contents)**
 
@@ -119,6 +123,10 @@ The iXblue ROS driver is divided into three parts:
 #### Published topics
 
 The messages are filled into the `ros_publisher.cpp` file.
+
+To follow the [REP-145](https://www.ros.org/reps/rep-0145.html), the sensor data are not transformed within the driver, only the units are modified in order to respect [REP-103](https://www.ros.org/reps/rep-0103.html).
+
+To change the orientation of the INS within your system, you can use the [`imu_transformer`](http://wiki.ros.org/imu_transformer) package.
 
 *ROS standard messages:*
 
